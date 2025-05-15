@@ -6,8 +6,8 @@ import java.awt.*;
 public class VingadorBot extends AdvancedRobot {
 
     public void run() {
-        setBodyColor(Color.DARK_GRAY);
-        setGunColor(Color.ORANGE);
+        setBodyColor(Color.MAGENTA);
+        setGunColor(Color.MAGENTA);
         setRadarColor(Color.RED);
 
 
