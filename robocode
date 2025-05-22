@@ -1,48 +1,50 @@
-package especial;
+package competitivo;
 
 import robocode.*;
-import java.awt.*; 
+import java.awt.*;
+import java.awt.geom.*;
 
-public class VingadorBot extends AdvancedRobot {
+public class VingadorBotPro extends AdvancedRobot {
+    private boolean modoVingador = false;
 
     public void run() {
         setBodyColor(Color.MAGENTA);
-        setGunColor(Color.MAGENTA);
-        setRadarColor(Color.RED);
-
+        setGunColor(Color.BLACK);
+        setRadarColor(Color.BLACK);
+        setBulletColor(Color.MAGENTA);
+        setScanColor(Color.MAGENTA);
 
         setAdjustRadarForGunTurn(true);
         setAdjustGunForRobotTurn(true);
 
-
         while (true) {
+            if (!modoVingador) movimentacaoAleatoria();
             setTurnRadarRight(360);
             execute();
         }
     }
 
     public void onScannedRobot(ScannedRobotEvent e) {
-        double radarTurn = getHeading() + e.getBearing() - getRadarHeading();
-        setTurnRadarRight(normalizeBearing(radarTurn) * 2);
+        travaRadar(e);
+        miraPreditiva(e);
 
-
-        double gunTurn = getHeading() + e.getBearing() - getGunHeading();
-        setTurnGunRight(normalizeBearing(gunTurn));
-
-
-        if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 5) {
-            setFire(2);
+        if (!modoVingador) {
+            double distancia = e.getDistance();
+            double potencia = (distancia < 100) ? 3 : (distancia < 400) ? 2 : 1;
+            if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10)
+                setFire(potencia);
+        } else {
+            if (getGunHeat() == 0)
+                setFire(3);
         }
     }
 
     public void onHitByBullet(HitByBulletEvent e) {
-        out.println("Retaliação ativada!");
-        setTurnRight(90 - e.getBearing()); 
-        setAhead(100); 
-
-        if (getGunHeat() == 0) {
-            setFire(2); 
-        }
+        out.println("Modo VINGADOR ativado!");
+        modoVingador = true;
+        setBodyColor(Color.RED);
+        setTurnRight(90 - e.getBearing());
+        setAhead(150);
     }
 
     public void onHitWall(HitWallEvent e) {
@@ -50,10 +52,39 @@ public class VingadorBot extends AdvancedRobot {
         setTurnRight(90);
     }
 
-    public void onHitRobot(HitRobotEvent e) {
-        for (int i = -15; i <= 15; i += 15) {
-            setTurnGunRight(i);
-            setFire(1);
+    private void travaRadar(ScannedRobotEvent e) {
+        double radarTurn = getHeading() + e.getBearing() - getRadarHeading();
+        setTurnRadarRight(normalizeBearing(radarTurn) * 2);
+    }
+
+    private void miraPreditiva(ScannedRobotEvent e) {
+        double firePower = 2;
+        double myX = getX(), myY = getY();
+        double absBearing = getHeadingRadians() + e.getBearingRadians();
+        double enemyX = myX + e.getDistance() * Math.sin(absBearing);
+        double enemyY = myY + e.getDistance() * Math.cos(absBearing);
+        double enemyHeading = e.getHeadingRadians();
+        double enemyVelocity = e.getVelocity();
+
+        double bulletSpeed = 20 - firePower * 3;
+        double deltaTime = 0;
+        double predictedX = enemyX, predictedY = enemyY;
+
+        while ((++deltaTime) * bulletSpeed < Point2D.distance(myX, myY, predictedX, predictedY)) {
+            predictedX += Math.sin(enemyHeading) * enemyVelocity;
+            predictedY += Math.cos(enemyHeading) * enemyVelocity;
+        }
+
+        double angle = Math.toDegrees(Math.atan2(predictedX - myX, predictedY - myY));
+        double gunTurn = normalizeBearing(angle - getGunHeading());
+        setTurnGunRight(gunTurn);
+    }
+
+    private void movimentacaoAleatoria() {
+        if (getDistanceRemaining() == 0 && getTurnRemaining() == 0) {
+            double angulo = Math.random() * 90 - 45;
+            setTurnRight(angulo);
+            setAhead(100 + Math.random() * 50);
         }
     }
 
